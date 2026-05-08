@@ -422,7 +422,7 @@ class Util extends Model {
 		$mainField = $lang === 'en' ? $fullLabels['en'] : $fullLabels['ar'];
 		$correspondingField = $lang === 'en' ? $fullLabels['ar'] : $fullLabels['en'];
 
-		$query = \app\models\Match::find()
+		$query = HadithMatch::find()
 			->select('*')
 			->where([$mainField => $urns]);
 		$results = $query->all();

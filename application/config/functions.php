@@ -19,11 +19,12 @@ function d($var,$caller=null)
  * Debug function with die() after
  * dd($var);
  */
-function dd($var)
-{
-    $caller = array_shift(debug_backtrace(1));
-    d($var,$caller);
-    die();
+if (!function_exists('dd')) {
+    function dd($var) {
+        $caller = array_shift(debug_backtrace(1));
+        d($var,$caller);
+        die();
+    }
 }
 
 ?>

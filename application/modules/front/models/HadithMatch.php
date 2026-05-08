@@ -13,7 +13,7 @@ use yii\db\ActiveRecord;
  * @property integer $ourHadithNumber
  */
 
-class Match extends ActiveRecord
+class HadithMatch extends ActiveRecord
 {
     /**
      * @return string the name of the table associated with this ActiveRecord class.
