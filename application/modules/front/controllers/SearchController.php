@@ -43,15 +43,16 @@ class SearchController extends SController
         $searchEngine = new KeywordSearchEngine();
         $searchEngine->setLimitPage($limit, $page);
         $searchEngine->setCollections($collections);
-		set_error_handler(function ($err_severity, $err_msg, $err_file, $err_line, array $err_context)
+		set_error_handler(function ($err_severity, $err_msg, $err_file, $err_line)
 							{ throw new \ErrorException($err_msg, 0, $err_severity, $err_file, $err_line); }, E_WARNING);
 		try {
         	$resultset = $searchEngine->doSearch($query);
 		} catch (\ErrorException $e) {
 			$errorMsg = "Your search query cannot be performed. It may contain improper characters, be too long, or be malformed in another way.";
 			return $this->render('index', ['errorMsg' => $errorMsg]);
+		} finally {
+			restore_error_handler();
 		}
-		restore_error_handler();
 
         if ($resultset === null) {
             return $this->searchEngineDown();
