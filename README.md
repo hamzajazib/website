@@ -18,7 +18,7 @@ Under the `application` folder, here are the important locations:
 
 ## Running on Windows
 
-* Install PHP 8.4
+* Install PHP 8.5
 * Create an IIS website and point it to the `public` folder
 * Add the `index.php` file as default document
 * Add handler mapping for `.php` files in iis
