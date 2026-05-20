@@ -21,7 +21,8 @@ class CdnHeaders
             if ($r->statusCode !== 200 && $r->statusCode !== 301) {
                 return;
             }
-            $r->headers->set('Cache-Control', 'public, max-age=' . $duration);
+            $r->headers->set('Cache-Control', 'no-cache');
+            $r->headers->set('Cloudflare-CDN-Cache-Control', 'public, max-age=' . $duration);
             $r->headers->set('Cache-Tag', $cacheTag);
         });
     }
