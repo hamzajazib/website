@@ -285,10 +285,10 @@ $showBio    = $hasLineage || $hasMeta || $hasPills;
     </div>
     <div class="pills" dir="rtl">
       <?php if ($narrator->in_bukhari): ?>
-      <span class="pill-outline arabic">يروي في البخاري</span>
+      <span class="pill-outline arabic">أخرج له البخاري</span>
       <?php endif; ?>
       <?php if ($narrator->in_muslim): ?>
-      <span class="pill-outline arabic">يروي في مسلم</span>
+      <span class="pill-outline arabic">أخرج له مسلم</span>
       <?php endif; ?>
     </div>
   </div>
