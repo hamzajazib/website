@@ -81,14 +81,29 @@ $tabEn      = $tabaqatEn[$tabaka] ?? $tabaka . 'th';
 
 // Pre-compute English transliterations for hero and bio fields
 $enTitle      = $narrator::transliterateArabicName($narrator->name ?: $narrator->lineage);
-$enKunya      = !empty($narrator->kunya)             ? $narrator::transliterateArabicName($narrator->kunya)             : '';
+$enKunya      = !empty($narrator->kunya)
+    ? implode(', ', array_map(
+        fn($p) => $narrator::transliterateArabicName(trim($p)),
+        explode('،', $narrator->kunya)
+      ))
+    : '';
 $enGrade      = !empty($narrator->reliability_label) ? $narrator::translateJarhTadil($narrator->reliability_label)      : '';
 $gradeTier    = ($narrator->reliability_grade !== null)
     ? $narrator::getReliabilityGradeTier((int)$narrator->reliability_grade)
     : 'neutral';
-$enLineage    = !empty($narrator->lineage)            ? $narrator::transliterateArabicName($narrator->lineage)            : '';
+$enLineage    = !empty($narrator->lineage)
+    ? implode(', ', array_map(
+        fn($p) => $narrator::transliterateArabicName(trim($p)),
+        explode('،', $narrator->lineage)
+      ))
+    : '';
 $enProfession = !empty($narrator->profession)        ? $narrator::translateProfession($narrator->profession)           : '';
-$enSchool     = !empty($narrator->legal_school)      ? $narrator::transliterateArabicName($narrator->legal_school)      : '';
+$enSchool     = !empty($narrator->legal_school)
+    ? implode(', ', array_map(
+        fn($p) => $narrator::transliterateArabicName(trim($p)),
+        explode('،', $narrator->legal_school)
+      ))
+    : '';
 $enResidence  = !empty($narrator->residence)         ? $narrator::translateResidence($narrator->residence)              : '';
 $enNasab      = !empty($narrator->nasab)
     ? implode(', ', array_map(
@@ -96,6 +111,23 @@ $enNasab      = !empty($narrator->nasab)
         explode('،', $narrator->nasab)
       ))
     : '';
+$enAltName    = !empty($narrator->alt_name)
+    ? $narrator::transliterateArabicName($narrator->alt_name)
+    : '';
+$enEpithet    = !empty($narrator->epithet)
+    ? implode(', ', array_map(
+        fn($p) => $narrator::transliterateArabicName(trim($p)),
+        explode('،', $narrator->epithet)
+      ))
+    : '';
+$enDescriptor = !empty($narrator->descriptor)
+    ? $narrator::translateDescriptor($narrator->descriptor)
+    : '';
+$hasAltName   = !empty($narrator->alt_name);
+$hasEpithet   = !empty($narrator->epithet);
+$hasDescriptor = !empty($narrator->descriptor);
+$hasIkhtilat  = !empty($narrator->ikhtilat);
+$hasTadlis    = !empty($narrator->tadlis);
 
 // Teachers / students: first 5 visible, remainder hidden
 $PREVIEW = 5;
@@ -115,8 +147,18 @@ $studentTotal   = count($studentRows);
 
   <!-- Title row -->
   <div class="hero-row">
-    <h1 class="hero-title"><?= htmlspecialchars($enTitle) ?></h1>
-    <h1 class="hero-title arabic" dir="rtl"><?= htmlspecialchars($narrator->name ?: $narrator->lineage) ?></h1>
+    <div>
+      <h1 class="hero-title"><?= htmlspecialchars($enTitle) ?></h1>
+      <?php if ($hasAltName): ?>
+      <p class="hero-alt-name">(<?= htmlspecialchars($enAltName) ?>)</p>
+      <?php endif; ?>
+    </div>
+    <div dir="rtl">
+      <h1 class="hero-title arabic"><?= htmlspecialchars($narrator->name ?: $narrator->lineage) ?></h1>
+      <?php if ($hasAltName): ?>
+      <p class="hero-alt-name arabic">(<?= htmlspecialchars($narrator->alt_name) ?>)</p>
+      <?php endif; ?>
+    </div>
   </div>
 
   <!-- Badges row -->
@@ -128,8 +170,11 @@ $studentTotal   = count($studentRows);
         <span class="pill-text"><?= htmlspecialchars($enGrade) ?></span>
       </div>
       <?php endif; ?>
-      <?php if ($hasBirth || $hasDeath): ?>
-      <span class="pill-secondary"><?= htmlspecialchars($dateEnStr) ?></span>
+      <?php if ($hasIkhtilat): ?>
+      <span class="pill-flag pill-flag--warning">Ikhtilat</span>
+      <?php endif; ?>
+      <?php if ($hasTadlis): ?>
+      <span class="pill-flag pill-flag--warning">Tadlis</span>
       <?php endif; ?>
     </div>
     <div class="badges" dir="rtl">
@@ -139,8 +184,11 @@ $studentTotal   = count($studentRows);
         <span class="arabic"><?= htmlspecialchars($narrator->reliability_label) ?></span>
       </div>
       <?php endif; ?>
-      <?php if ($hasBirth || $hasDeath): ?>
-      <span class="pill-secondary arabic"><?= htmlspecialchars($arDateStr) ?></span>
+      <?php if ($hasIkhtilat): ?>
+      <span class="pill-flag pill-flag--warning arabic">مختلط</span>
+      <?php endif; ?>
+      <?php if ($hasTadlis): ?>
+      <span class="pill-flag pill-flag--warning arabic">مدلّس</span>
       <?php endif; ?>
     </div>
   </div>
@@ -154,10 +202,19 @@ $studentTotal   = count($studentRows);
         <span class="field"><?= htmlspecialchars($enKunya) ?></span>
       </div>
       <?php endif; ?>
-      <?php if ($hasTabaka): ?>
+      <?php if ($hasTabaka || ($hasBirth || $hasDeath)): ?>
       <div>
-        <span class="label">Generation</span>
-        <span class="field"><?= htmlspecialchars($tabEn) ?></span>
+        <?php if ($hasTabaka): ?><span class="label">Generation</span><?php endif; ?>
+        <div class="field-line">
+          <?php if ($hasTabaka): ?><span class="field"><?= htmlspecialchars($tabEn) ?></span><?php endif; ?>
+          <?php if ($hasBirth || $hasDeath): ?><span class="pill-secondary"><?= htmlspecialchars($dateEnStr) ?></span><?php endif; ?>
+        </div>
+      </div>
+      <?php endif; ?>
+      <?php if ($hasEpithet): ?>
+      <div>
+        <span class="label">Title / Byname</span>
+        <span class="field"><?= htmlspecialchars($enEpithet) ?></span>
       </div>
       <?php endif; ?>
     </div>
@@ -169,10 +226,19 @@ $studentTotal   = count($studentRows);
           <span class="field arabic"><?= htmlspecialchars($narrator->kunya) ?></span>
         </div>
         <?php endif; ?>
-        <?php if ($hasTabaka): ?>
+        <?php if ($hasTabaka || ($hasBirth || $hasDeath)): ?>
         <div>
-          <span class="label arabic-label">الطبقة</span>
-          <span class="field arabic"><?= htmlspecialchars($tabAr) ?></span>
+          <?php if ($hasTabaka): ?><span class="label arabic-label">الطبقة</span><?php endif; ?>
+          <div class="field-line">
+            <?php if ($hasTabaka): ?><span class="field arabic"><?= htmlspecialchars($tabAr) ?></span><?php endif; ?>
+            <?php if ($hasBirth || $hasDeath): ?><span class="pill-secondary arabic"><?= htmlspecialchars($arDateStr) ?></span><?php endif; ?>
+          </div>
+        </div>
+        <?php endif; ?>
+        <?php if ($hasEpithet): ?>
+        <div>
+          <span class="label arabic-label">اللقب</span>
+          <span class="field arabic"><?= htmlspecialchars($narrator->epithet) ?></span>
         </div>
         <?php endif; ?>
       </div>
@@ -188,7 +254,7 @@ $hasProfession = !empty($narrator->profession);
 $hasSchool    = !empty($narrator->legal_school);
 $hasResidence = !empty($narrator->residence);
 $hasNasab     = !empty($narrator->nasab);
-$hasMeta      = $hasProfession || $hasSchool || $hasResidence;
+$hasMeta      = $hasProfession || $hasSchool || $hasResidence || $hasDescriptor;
 $hasPills   = $narrator->in_bukhari || $narrator->in_muslim;
 $showBio    = $hasLineage || $hasMeta || $hasPills;
 ?>
@@ -234,6 +300,12 @@ $showBio    = $hasLineage || $hasMeta || $hasPills;
         <p class="field"><?= htmlspecialchars($enResidence) ?></p>
       </div>
       <?php endif; ?>
+      <?php if ($hasDescriptor): ?>
+      <div>
+        <span class="label label--m1">Description</span>
+        <p class="field"><?= htmlspecialchars($enDescriptor) ?></p>
+      </div>
+      <?php endif; ?>
     </div>
     <div class="meta-grid" dir="rtl">
       <?php if ($hasProfession): ?>
@@ -252,6 +324,12 @@ $showBio    = $hasLineage || $hasMeta || $hasPills;
       <div>
         <span class="label arabic-label label--m1">بلد الإقامة</span>
         <p class="field arabic"><?= htmlspecialchars($narrator->residence) ?></p>
+      </div>
+      <?php endif; ?>
+      <?php if ($hasDescriptor): ?>
+      <div>
+        <span class="label arabic-label label--m1">الوصف</span>
+        <p class="field arabic"><?= htmlspecialchars($narrator->descriptor) ?></p>
       </div>
       <?php endif; ?>
     </div>

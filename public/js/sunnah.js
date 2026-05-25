@@ -3,7 +3,7 @@
 	};
 
 	function openquran(surah, beginayah, endayah) {
-        window.open("https://quran.com/"+(surah+1)+"/"+beginayah+"-"+endayah, "quranWindow", "resizable = 1, fullscreen = 1");
+        window.open("https://quran.com/"+(surah+1)+"/"+beginayah+"-"+endayah, "_blank");
     }
 
     function reportHadith_old(urn) {

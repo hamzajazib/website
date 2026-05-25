@@ -171,8 +171,37 @@
 }
 .narrator-page .pill-outline.arabic { font-size: 1.25rem; }
 
+/* ---------- Hero alt-name subtitle ---------- */
+.narrator-page .hero-alt-name {
+  color: var(--secondary);
+  font-style: italic;
+  font-size: 1.2rem;
+  margin-top: 0.3rem;
+}
+.narrator-page .hero-alt-name.arabic { font-size: 1.4rem; font-style: normal; }
+
+/* ---------- Flag pills (ikhtilat / tadlis) ---------- */
+.narrator-page .pill-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid;
+}
+.narrator-page .pill-flag--warning {
+  background: #e8f0c0;
+  color: #2e3d00;
+  border-color: #8a9a00;
+}
+
 .narrator-page .fields { display: flex; gap: 1.5rem; }
 .narrator-page [dir="rtl"] .fields { gap: 2rem; }
+.narrator-page .field-line { display: flex; align-items: center; gap: 1rem; }
 
 .narrator-page .label {
   display: block;
@@ -530,6 +559,8 @@
   font-size: 16px;
   text-transform: none;
   letter-spacing: normal;
+  margin-bottom: 0;
+  line-height: 1;
 }
 
 /* =====================================================
@@ -669,4 +700,10 @@
 
 [data-theme="dark"] .narrator-page .tarjama-scholar {
   color: #fdba74;  /* orange-300 — amber-rust lightened for dark backgrounds */
+}
+
+[data-theme="dark"] .narrator-page .pill-flag--warning {
+  background: #3a4a00;
+  color: #d4e87a;
+  border-color: #6b7a00;
 }
