@@ -394,6 +394,159 @@
   line-height: 1.4;
 }
 
+/* ---------- Narrated hadith full page ---------- */
+.narrator-page .narrator-hadith-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.narrator-page .narrator-count-pill {
+  display: inline-flex;
+  flex-direction: column;
+  min-width: 11rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--primary-20);
+  border-radius: 8px;
+  background: var(--primary-10);
+}
+.narrator-page .narrator-count-pill--matched {
+  background: var(--surface-low);
+  border-color: var(--outline-faint);
+}
+.narrator-page .narrator-count-value {
+  font-family: var(--f-head);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--on-surface);
+  line-height: 1;
+}
+.narrator-page .narrator-count-label,
+.narrator-page .narrator-count-note {
+  color: var(--secondary);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 0.35rem;
+}
+.narrator-page .narrator-count-note {
+  font-size: 0.95rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.narrator-page .narrator-filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 2rem;
+}
+.narrator-page .narrator-filter-pill {
+  display: inline-grid;
+  gap: 0.15rem;
+  align-items: center;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--outline-faint);
+  border-radius: 999px;
+  background: var(--surface-lowest);
+  color: var(--secondary);
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+}
+.narrator-page .narrator-filter-pill .arabic {
+  font-size: 1.35rem;
+  font-weight: 400;
+}
+.narrator-page .narrator-filter-pill[aria-pressed="true"] {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.narrator-page .narrator-hadith-clusters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.8rem 2rem;
+}
+.narrator-page .narrator-hadith-cluster {
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--outline-faint);
+}
+.narrator-page .narrator-cluster-title {
+  color: var(--on-surface);
+  font-size: 2rem;
+  line-height: 1.65;
+  text-align: right;
+  padding-bottom: 0.35rem;
+  margin-bottom: 0.6rem;
+  border-bottom: 2px solid var(--primary-20);
+}
+.narrator-page .narrator-cluster-link-list {
+  display: grid;
+  gap: 0;
+  justify-content: start;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+.narrator-page .narrator-cluster-link-list li {
+  border-bottom: 1px solid var(--outline-fainter);
+}
+.narrator-page .narrator-cluster-link {
+  display: inline-block;
+  padding: 0.35rem 0;
+  color: var(--primary);
+  font-weight: 700;
+}
+.narrator-page .narrator-cluster-link:hover {
+  text-decoration: underline;
+}
+.narrator-page .narrator-cluster-expand,
+.narrator-page .narrator-clusters-load-more,
+.narrator-page .narrator-hadith-error,
+.narrator-page .narrator-hadith-empty {
+  margin-top: 1rem;
+  color: var(--primary);
+  font-weight: 700;
+}
+.narrator-page .narrator-clusters-load-more {
+  display: grid;
+  gap: 0.15rem;
+  justify-items: center;
+  margin: 2rem auto 0;
+}
+.narrator-page .narrator-clusters-load-more .arabic { font-size: 1.25rem; font-weight: 400; }
+.narrator-page .narrator-hadith-error,
+.narrator-page .narrator-hadith-empty {
+  color: var(--secondary);
+}
+.narrator-page .narrator-cluster-expand {
+  border: 0;
+  background: transparent;
+  padding: 0.35rem 0;
+}
+.narrator-page .narrator-clusters-load-more {
+  border: 1px solid var(--outline-faint);
+  border-radius: 999px;
+  background: var(--surface-lowest);
+  padding: 0.55rem 1.1rem;
+}
+.narrator-page .narrator-clusters-load-more * {
+  color: inherit;
+  -webkit-text-fill-color: inherit;
+}
+.narrator-page .narrator-clusters-load-more:disabled {
+  color: var(--primary);
+  -webkit-text-fill-color: var(--primary);
+  cursor: wait;
+  opacity: 0.75;
+}
+.narrator-page.narrator-hadith-loading #narrator-hadith-results {
+  opacity: 0.55;
+}
+
 /* ---------- Teacher / Student panels ---------- */
 .narrator-page .panel {
   padding: 2rem;
@@ -718,6 +871,12 @@
     font-size: 0.875rem;
   }
   .narrator-page .pill-outline.arabic { font-size: 1rem; }
+
+  .narrator-page .narrator-count-pill { min-width: 9rem; flex: 1 1 9rem; }
+  .narrator-page .narrator-count-value { font-size: 1.6rem; }
+  .narrator-page .narrator-hadith-clusters { grid-template-columns: 1fr; }
+  .narrator-page .narrator-cluster-title { font-size: 1.6rem; }
+  .narrator-page .narrator-cluster-link-list { justify-content: start; }
 
   /* Arabic field size scale-down */
   .narrator-page .field.arabic          { font-size: 1.25rem; }

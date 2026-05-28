@@ -105,11 +105,114 @@ class Narrator extends ActiveRecord
         return $opinions;
     }
 
-    /**
-     * Returns a cached, linked preview of hadith narrated by this narrator.
-     *
-     * @return array ['rows' => array, 'limit' => int]
-     */
+    public static function normalizeCollectionParam($collectionParam)
+    {
+        if ($collectionParam === null || $collectionParam === '' || $collectionParam === 'all') {
+            return 'all';
+        }
+        $parts = is_array($collectionParam)
+            ? $collectionParam
+            : preg_split('/\s*,\s*/', (string)$collectionParam, -1, PREG_SPLIT_NO_EMPTY);
+
+        $tokens = [];
+        foreach ($parts as $part) {
+            $token = strtolower(trim((string)$part));
+            if ($token !== '' && $token !== 'all' && preg_match('/^[a-z0-9_-]+$/', $token)) {
+                $tokens[$token] = true;
+            }
+        }
+        $tokens = array_keys($tokens);
+        sort($tokens, SORT_STRING);
+        return empty($tokens) ? 'all' : implode(',', $tokens);
+    }
+
+    public function normalizeNarratedHadithCollectionIds($collectionParam, array $availableCollections = null)
+    {
+        $ids = self::parseCollectionIds($collectionParam);
+        if (empty($ids)) {
+            return [];
+        }
+        if ($availableCollections === null) {
+            $availableCollections = $this->getNarratedHadithAvailableCollections();
+        }
+
+        $allowed = [];
+        foreach ($availableCollections as $collection) {
+            $allowed[(int)$collection['collectionID']] = true;
+        }
+
+        $normalized = [];
+        foreach ($ids as $id) {
+            if (isset($allowed[$id])) {
+                $normalized[] = $id;
+            }
+        }
+        return empty($normalized) ? [] : array_values(array_unique($normalized));
+    }
+
+    public function getNarratedHadithAvailableCollections()
+    {
+        $cacheKey = 'narrator:hadith_collections:v1:narrator:' . (int)$this->narrator_id;
+        $cached = Yii::$app->cache->get($cacheKey);
+        if ($cached !== false) {
+            return $cached;
+        }
+
+        $queryTimeoutMs = 3000;
+        try {
+            $rows = Yii::$app->db->createCommand("
+                SELECT /*+ MAX_EXECUTION_TIME($queryTimeoutMs) */
+                       c.collectionID,
+                       c.gk_collection_id AS gkCollectionID,
+                       c.name,
+                       c.englishTitle,
+                       c.arabicTitle,
+                       COUNT(DISTINCT a.arabicURN) AS hadithCount
+                FROM narrator_ahadith na
+                INNER JOIN Collections c ON c.gk_collection_id = na.gk_collection_id
+                INNER JOIN ArabicHadithTable a ON a.gk_hadith_id = na.bhid
+                    AND a.collection = c.name
+                WHERE na.narrator_id = :nid
+                GROUP BY c.collectionID, c.gk_collection_id, c.name, c.englishTitle, c.arabicTitle
+                ORDER BY c.collectionID ASC
+            ", [':nid' => (int)$this->narrator_id])->queryAll();
+        } catch (\yii\db\Exception $e) {
+            Yii::warning('Narrated hadith collections failed for narrator ' . (int)$this->narrator_id . ': ' . $e->getMessage(), __METHOD__);
+            $rows = [];
+        }
+
+        $collections = [];
+        foreach ($rows as $row) {
+            $collections[] = [
+                'collectionID'    => (int)$row['collectionID'],
+                'gkCollectionID'  => (int)$row['gkCollectionID'],
+                'name'            => $row['name'],
+                'englishTitle'    => $row['englishTitle'],
+                'arabicTitle'     => $row['arabicTitle'],
+                'hadithCount'     => (int)$row['hadithCount'],
+            ];
+        }
+
+        Yii::$app->cache->set($cacheKey, $collections, Yii::$app->params['cacheTTL']);
+        return $collections;
+    }
+
+    public function getNarratedHadithCounts(array $selectedCollectionIds = [])
+    {
+        $selectedCollectionIds = self::normalizeIds($selectedCollectionIds);
+        $matchedCount = $this->getNarratedHadithMatchedCount($selectedCollectionIds);
+        $allMatchedCount = empty($selectedCollectionIds)
+            ? $matchedCount
+            : $this->getNarratedHadithMatchedCount([]);
+
+        return [
+            'totalNarrated'  => is_numeric($this->narration_count ?? null) ? (int)$this->narration_count : 0,
+            'matchedCount'   => $matchedCount,
+            'allMatchedCount'=> $allMatchedCount,
+            'isFiltered'     => !empty($selectedCollectionIds),
+        ];
+    }
+
     public function getNarratedHadithPreview(Util $util, $limit = 10)
     {
         $limit = max(1, min(10, (int)$limit));
@@ -152,13 +255,7 @@ class Narrator extends ActiveRecord
             }
 
             $params = [':nid' => (int)$this->narrator_id];
-            $placeholders = [];
-            foreach ($clusterIds as $index => $clusterId) {
-                $placeholder = ':cluster' . $index;
-                $placeholders[] = $placeholder;
-                $params[$placeholder] = $clusterId;
-            }
-
+            $clusterSql = self::inSql('na.cluster_id', 'cluster', $clusterIds, $params);
             $candidateRows = Yii::$app->db->createCommand("
                 SELECT /*+ MAX_EXECUTION_TIME($queryTimeoutMs) */ na.cluster_id AS narratorClusterID,
                        na.bhid,
@@ -167,7 +264,7 @@ class Narrator extends ActiveRecord
                 FROM narrator_ahadith na
                 INNER JOIN Collections c ON c.gk_collection_id = na.gk_collection_id
                 WHERE na.narrator_id = :nid
-                    AND na.cluster_id IN (" . implode(', ', $placeholders) . ")
+                    AND $clusterSql
                 ORDER BY c.collectionID, na.bhid
             ", $params)->queryAll();
 
@@ -264,6 +361,332 @@ class Narrator extends ActiveRecord
         ];
         Yii::$app->cache->set($cacheKey, $result, Yii::$app->params['cacheTTL']);
         return $result;
+    }
+
+    public function getNarratedHadithClusters(Util $util, array $selectedCollectionIds = [], $linksPerCluster = 7, $clusterLimit = null, $clusterOffset = 0)
+    {
+        $selectedCollectionIds = self::normalizeIds($selectedCollectionIds);
+        $linksPerCluster = max(1, (int)$linksPerCluster);
+        $clusterLimit = $clusterLimit === null ? null : max(1, (int)$clusterLimit);
+        $clusterOffset = max(0, (int)$clusterOffset);
+        $collectionKey = self::collectionCacheKey($selectedCollectionIds);
+        $limitKey = $clusterLimit === null ? 'all' : (string)$clusterLimit;
+        $cacheKey = 'narrator:hadith_clusters:v2:narrator:' . (int)$this->narrator_id
+            . ':collections:' . $collectionKey
+            . ':links:' . $linksPerCluster
+            . ':clusters:' . $limitKey
+            . ':offset:' . $clusterOffset;
+
+        $cached = Yii::$app->cache->get($cacheKey);
+        if ($cached !== false) {
+            return $cached;
+        }
+
+        $queryTimeoutMs = 3000;
+        try {
+            $params = [':nid' => (int)$this->narrator_id];
+            $collectionSql = self::selectedCollectionsSql($selectedCollectionIds, $params, 'c');
+            $limitSql = $clusterLimit === null ? '' : ' LIMIT ' . $clusterOffset . ', ' . $clusterLimit;
+
+            $clusterRows = Yii::$app->db->createCommand("
+                SELECT /*+ MAX_EXECUTION_TIME($queryTimeoutMs) */
+                       cl.cluster_id,
+                       cl.taraf,
+                       cl.prominence_score
+                FROM clusters cl
+                INNER JOIN (
+                    SELECT DISTINCT na.cluster_id
+                    FROM narrator_ahadith na
+                    INNER JOIN Collections c ON c.gk_collection_id = na.gk_collection_id
+                    INNER JOIN ArabicHadithTable a ON a.gk_hadith_id = na.bhid
+                        AND a.collection = c.name
+                    WHERE na.narrator_id = :nid
+                        AND na.cluster_id IS NOT NULL
+                        $collectionSql
+                ) nc ON nc.cluster_id = cl.cluster_id
+                ORDER BY cl.prominence_score DESC
+                $limitSql
+            ", $params)->queryAll();
+
+            if (empty($clusterRows)) {
+                Yii::$app->cache->set($cacheKey, [], Yii::$app->params['cacheTTL']);
+                return [];
+            }
+
+            $clusterIds = [];
+            $clustersById = [];
+            foreach ($clusterRows as $index => $clusterRow) {
+                $clusterId = (int)$clusterRow['cluster_id'];
+                $clusterIds[] = $clusterId;
+                $clustersById[$clusterId] = [
+                    'clusterID'        => $clusterId,
+                    'taraf'            => $clusterRow['taraf'] ?? '',
+                    'tarafSnippet'     => self::snippetArabic($clusterRow['taraf'] ?? '', 10),
+                    'prominenceScore'  => $clusterRow['prominence_score'] === null ? null : (float)$clusterRow['prominence_score'],
+                    'totalHadithCount' => 0,
+                    'hadithRows'       => [],
+                    'hasMore'          => false,
+                ];
+            }
+
+            $rawRowsByCluster = $this->fetchNarratedHadithRowsForClusters($clusterIds, $selectedCollectionIds);
+        } catch (\yii\db\Exception $e) {
+            Yii::warning('Narrated hadith clusters failed for narrator ' . (int)$this->narrator_id . ': ' . $e->getMessage(), __METHOD__);
+            Yii::$app->cache->set($cacheKey, [], max(1, min(300, (int)Yii::$app->params['cacheTTL'])));
+            return [];
+        }
+
+        $clusters = [];
+        foreach ($clusterIds as $clusterId) {
+            $cluster = $clustersById[$clusterId];
+            $rawRows = $rawRowsByCluster[$clusterId] ?? [];
+            $cluster['totalHadithCount'] = count($rawRows);
+            $cluster['hasMore'] = $cluster['totalHadithCount'] > $linksPerCluster;
+            $cluster['hadithRows'] = self::hydrateNarratedHadithRows(
+                array_slice($rawRows, 0, $linksPerCluster),
+                $util
+            );
+
+            if ($cluster['totalHadithCount'] > 0 && !empty($cluster['hadithRows'])) {
+                $clusters[] = $cluster;
+            }
+        }
+
+        Yii::$app->cache->set($cacheKey, $clusters, Yii::$app->params['cacheTTL']);
+        return $clusters;
+    }
+
+    public function getNarratedHadithClusterLinks(Util $util, $clusterId, array $selectedCollectionIds = [])
+    {
+        $clusterId = (int)$clusterId;
+        $selectedCollectionIds = self::normalizeIds($selectedCollectionIds);
+        $collectionKey = self::collectionCacheKey($selectedCollectionIds);
+        $cacheKey = 'narrator:hadith_cluster_links:v1:narrator:' . (int)$this->narrator_id
+            . ':cluster:' . $clusterId
+            . ':collections:' . $collectionKey;
+
+        $cached = Yii::$app->cache->get($cacheKey);
+        if ($cached !== false) {
+            return $cached;
+        }
+
+        try {
+            $rowsByCluster = $this->fetchNarratedHadithRowsForClusters([$clusterId], $selectedCollectionIds);
+            $hadithRows = self::hydrateNarratedHadithRows($rowsByCluster[$clusterId] ?? [], $util);
+        } catch (\yii\db\Exception $e) {
+            Yii::warning('Narrated hadith cluster links failed for narrator ' . (int)$this->narrator_id . ': ' . $e->getMessage(), __METHOD__);
+            $hadithRows = [];
+        }
+
+        $result = [
+            'clusterID'        => $clusterId,
+            'totalHadithCount' => count($hadithRows),
+            'hadithRows'       => $hadithRows,
+        ];
+        Yii::$app->cache->set($cacheKey, $result, Yii::$app->params['cacheTTL']);
+        return $result;
+    }
+
+    private function getNarratedHadithMatchedCount(array $selectedCollectionIds = [])
+    {
+        $selectedCollectionIds = self::normalizeIds($selectedCollectionIds);
+        $collectionKey = self::collectionCacheKey($selectedCollectionIds);
+        $cacheKey = 'narrator:hadith_count:v2:narrator:' . (int)$this->narrator_id . ':collections:' . $collectionKey;
+
+        $cached = Yii::$app->cache->get($cacheKey);
+        if ($cached !== false) {
+            return (int)$cached;
+        }
+
+        $queryTimeoutMs = 3000;
+        try {
+            $params = [':nid' => (int)$this->narrator_id];
+            $collectionSql = self::selectedCollectionsSql($selectedCollectionIds, $params, 'c');
+            $row = Yii::$app->db->createCommand("
+                SELECT /*+ MAX_EXECUTION_TIME($queryTimeoutMs) */ COUNT(DISTINCT na.cluster_id) AS cnt
+                FROM narrator_ahadith na
+                INNER JOIN Collections c ON c.gk_collection_id = na.gk_collection_id
+                INNER JOIN ArabicHadithTable a ON a.gk_hadith_id = na.bhid
+                    AND a.collection = c.name
+                WHERE na.narrator_id = :nid
+                    AND na.cluster_id IS NOT NULL
+                    $collectionSql
+            ", $params)->queryOne();
+            $count = (int)($row['cnt'] ?? 0);
+        } catch (\yii\db\Exception $e) {
+            Yii::warning('Narrated hadith count failed for narrator ' . (int)$this->narrator_id . ': ' . $e->getMessage(), __METHOD__);
+            $count = 0;
+        }
+
+        Yii::$app->cache->set($cacheKey, $count, Yii::$app->params['cacheTTL']);
+        return $count;
+    }
+
+    private function fetchNarratedHadithRowsForClusters(array $clusterIds, array $selectedCollectionIds = [])
+    {
+        $clusterIds = self::normalizeIds($clusterIds);
+        $selectedCollectionIds = self::normalizeIds($selectedCollectionIds);
+        if (empty($clusterIds)) {
+            return [];
+        }
+
+        $queryTimeoutMs = 3000;
+        $params = [':nid' => (int)$this->narrator_id];
+        $clusterSql = self::inSql('na.cluster_id', 'cluster', $clusterIds, $params);
+        $collectionSql = self::selectedCollectionsSql($selectedCollectionIds, $params, 'c');
+
+        $rows = Yii::$app->db->createCommand("
+            SELECT /*+ MAX_EXECUTION_TIME($queryTimeoutMs) */
+                   na.cluster_id AS clusterID,
+                   c.collectionID,
+                   c.name AS collectionName,
+                   c.englishTitle AS collectionTitle,
+                   c.arabicTitle AS collectionArabicTitle,
+                   a.arabicURN,
+                   a.collection,
+                   a.bookID,
+                   a.bookNumber,
+                   a.hadithNumber,
+                   a.ourHadithNumber
+            FROM narrator_ahadith na
+            INNER JOIN Collections c ON c.gk_collection_id = na.gk_collection_id
+            INNER JOIN ArabicHadithTable a ON a.gk_hadith_id = na.bhid
+                AND a.collection = c.name
+            WHERE na.narrator_id = :nid
+                AND $clusterSql
+                $collectionSql
+            ORDER BY na.cluster_id, c.collectionID, a.arabicURN
+        ", $params)->queryAll();
+
+        $rowsByCluster = [];
+        $seen = [];
+        foreach ($rows as $row) {
+            $clusterId = (int)$row['clusterID'];
+            $arabicURN = (int)$row['arabicURN'];
+            $seenKey = $clusterId . ':' . $arabicURN;
+            if (isset($seen[$seenKey])) {
+                continue;
+            }
+            $seen[$seenKey] = true;
+            $rowsByCluster[$clusterId][] = [
+                'arabicURN'             => $arabicURN,
+                'collectionID'          => (int)$row['collectionID'],
+                'collectionName'        => $row['collectionName'],
+                'collectionTitle'       => $row['collectionTitle'],
+                'collectionArabicTitle' => $row['collectionArabicTitle'],
+                'collection'            => $row['collection'],
+                'bookID'                => $row['bookID'],
+                'bookNumber'            => $row['bookNumber'],
+                'hadithNumber'          => $row['hadithNumber'],
+                'ourHadithNumber'       => $row['ourHadithNumber'],
+            ];
+        }
+        return $rowsByCluster;
+    }
+
+    private static function hydrateNarratedHadithRows(array $rows, Util $util)
+    {
+        $hadithRows = [];
+        foreach ($rows as $row) {
+            $hadith = new ArabicHadith([
+                'arabicURN'       => $row['arabicURN'],
+                'collection'      => $row['collectionName'],
+                'bookID'          => $row['bookID'],
+                'bookNumber'      => $row['bookNumber'],
+                'hadithNumber'    => $row['hadithNumber'],
+                'ourHadithNumber' => $row['ourHadithNumber'],
+            ]);
+            $collection = $util->getCollection($hadith->collection);
+            $book = $util->getBook($hadith->collection, $hadith->bookID, 'arabic');
+            if ($collection === null || $book === null) {
+                continue;
+            }
+
+            $hadith->populate($util, $collection, $book);
+            $reference = $hadith->canonicalReference ?: $hadith->sunnahReference ?: $hadith->arabicReference;
+            if (empty($reference)) {
+                $reference = $collection->englishTitle . ' ' . $hadith->hadithNumber;
+            }
+            if ((int)$book->status === 6
+                && !empty($collection->englishTitle)
+                && strpos($reference, $collection->englishTitle) !== 0) {
+                $reference = $collection->englishTitle . ' ' . $reference;
+            }
+
+            $hadithRows[] = [
+                'arabicURN'             => (int)$hadith->arabicURN,
+                'reference'             => $reference,
+                'permalink'             => $hadith->permalink ?: '/urn/' . $hadith->arabicURN,
+                'collectionID'          => (int)$row['collectionID'],
+                'collectionName'        => $row['collectionName'],
+                'collectionTitle'       => $row['collectionTitle'],
+                'collectionArabicTitle' => $row['collectionArabicTitle'],
+            ];
+        }
+        return $hadithRows;
+    }
+
+    private static function parseCollectionIds($collectionParam)
+    {
+        if ($collectionParam === null || $collectionParam === '' || $collectionParam === 'all') {
+            return [];
+        }
+        if (is_array($collectionParam)) {
+            $parts = $collectionParam;
+        } else {
+            $parts = preg_split('/\s*,\s*/', (string)$collectionParam, -1, PREG_SPLIT_NO_EMPTY);
+        }
+
+        $ids = [];
+        foreach ($parts as $part) {
+            $id = (int)$part;
+            if ($id > 0) {
+                $ids[$id] = true;
+            }
+        }
+        $ids = array_keys($ids);
+        sort($ids, SORT_NUMERIC);
+        return $ids;
+    }
+
+    private static function normalizeIds(array $ids)
+    {
+        $normalized = [];
+        foreach ($ids as $id) {
+            $id = (int)$id;
+            if ($id > 0) {
+                $normalized[$id] = true;
+            }
+        }
+        $normalized = array_keys($normalized);
+        sort($normalized, SORT_NUMERIC);
+        return $normalized;
+    }
+
+    private static function collectionCacheKey(array $selectedCollectionIds)
+    {
+        $selectedCollectionIds = self::normalizeIds($selectedCollectionIds);
+        return empty($selectedCollectionIds) ? 'all' : implode('-', $selectedCollectionIds);
+    }
+
+    private static function selectedCollectionsSql(array $selectedCollectionIds, array &$params, $alias = 'c')
+    {
+        $selectedCollectionIds = self::normalizeIds($selectedCollectionIds);
+        if (empty($selectedCollectionIds)) {
+            return '';
+        }
+        return ' AND ' . self::inSql($alias . '.collectionID', 'collection', $selectedCollectionIds, $params);
+    }
+
+    private static function inSql($column, $prefix, array $ids, array &$params)
+    {
+        $placeholders = [];
+        foreach (self::normalizeIds($ids) as $index => $id) {
+            $placeholder = ':' . $prefix . $index;
+            $placeholders[] = $placeholder;
+            $params[$placeholder] = $id;
+        }
+        return $column . ' IN (' . implode(', ', $placeholders) . ')';
     }
 
     private static function snippetArabic($text, $words = 14)

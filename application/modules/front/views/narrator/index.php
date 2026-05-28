@@ -5,7 +5,7 @@
 /** @var array $teacherRows    [['narrator_id' => int, 'byname' => string], ...] */
 /** @var array $studentRows    [['narrator_id' => int, 'byname' => string], ...] */
 /** @var array $tarjamaBlocks  [['label' => string, 'html' => string], ...] */
-/** @var array $narratedHadith ['rows' => array, 'limit' => int] */
+/** @var array $narratedHadith ['clusters' => array, 'rows' => array, 'limit' => int] */
 
 $this->registerJs(<<<'JS'
 document.addEventListener("click", (e) => {
@@ -29,69 +29,7 @@ document.addEventListener("click", (e) => {
 });
 JS, \yii\web\View::POS_END);
 
-// Arabic ordinal labels for tabaka (generation tier), 1–12
-$tabaqatAr = [
-    1  => 'الأولى',
-    2  => 'الثانية',
-    3  => 'الثالثة',
-    4  => 'الرابعة',
-    5  => 'الخامسة',
-    6  => 'السادسة',
-    7  => 'السابعة',
-    8  => 'الثامنة',
-    9  => 'التاسعة',
-    10 => 'العاشرة',
-    11 => 'الحادية عشرة',
-    12 => 'الثانية عشرة',
-];
-
-// English ordinal labels for tabaka
-$tabaqatEn = [
-    1 => '1st', 2 => '2nd', 3 => '3rd', 4 => '4th', 5 => '5th',
-    6 => '6th', 7 => '7th', 8 => '8th', 9 => '9th', 10 => '10th',
-    11 => '11th', 12 => '12th',
-];
-
-// Pre-compute date strings for hero pills
-$hasBirth = !empty($narrator->date_of_birth);
-$hasDeath = !empty($narrator->death_year);
-$dateEnStr = '';
-$arDateStr = '';
-$toArNums = fn(string $s): string => str_replace(
-    ['0','1','2','3','4','5','6','7','8','9'],
-    ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'],
-    $s
-);
-if ($hasBirth || $hasDeath) {
-    if ($hasBirth && $hasDeath) {
-        $dateEnStr = $narrator->date_of_birth . ' – ' . $narrator->death_year . ' AH';
-        $arDateStr = $toArNums($narrator->date_of_birth . ' – ' . $narrator->death_year) . ' هـ';
-    } elseif ($hasBirth) {
-        $dateEnStr = $narrator->date_of_birth . ' AH';
-        $arDateStr = $toArNums($narrator->date_of_birth) . ' هـ';
-    } else {
-        $dateEnStr = 'd. ' . $narrator->death_year . ' AH';
-        $arDateStr = 'ت. ' . $toArNums($narrator->death_year) . ' هـ';
-    }
-}
-
-$tabaka     = (int)$narrator->generation;
-$hasTabaka  = $tabaka > 0;
-$tabAr      = $tabaqatAr[$tabaka] ?? (string)$tabaka;
-$tabEn      = $tabaqatEn[$tabaka] ?? $tabaka . 'th';
-
-// Pre-compute English transliterations for hero and bio fields
-$enTitle      = $narrator::transliterateArabicName($narrator->name ?: $narrator->lineage);
-$enKunya      = !empty($narrator->kunya)
-    ? implode(', ', array_map(
-        fn($p) => $narrator::transliterateArabicName(trim($p)),
-        explode('،', $narrator->kunya)
-      ))
-    : '';
-$enGrade      = !empty($narrator->reliability_label) ? $narrator::translateJarhTadil($narrator->reliability_label)      : '';
-$gradeTier    = ($narrator->reliability_grade !== null)
-    ? $narrator::getReliabilityGradeTier((int)$narrator->reliability_grade)
-    : 'neutral';
+// Pre-compute English transliterations for bio fields
 $enLineage    = !empty($narrator->lineage)
     ? implode(', ', array_map(
         fn($p) => $narrator::transliterateArabicName(trim($p)),
@@ -112,27 +50,10 @@ $enNasab      = !empty($narrator->nasab)
         explode('،', $narrator->nasab)
       ))
     : '';
-$enAltName    = !empty($narrator->alt_name)
-    ? $narrator::transliterateArabicName($narrator->alt_name)
-    : '';
-$enEpithet    = !empty($narrator->epithet)
-    ? implode(', ', array_map(
-        fn($p) => $narrator::transliterateArabicName(trim($p)),
-        explode('،', $narrator->epithet)
-      ))
-    : '';
 $enDescriptor = !empty($narrator->descriptor)
     ? $narrator::translateDescriptor($narrator->descriptor)
     : '';
-$hasAltName   = !empty($narrator->alt_name);
-$hasEpithet   = !empty($narrator->epithet);
 $hasDescriptor = !empty($narrator->descriptor);
-$hasIkhtilat  = !empty($narrator->ikhtilat);
-$hasTadlis    = !empty($narrator->tadlis);
-$narrationCount = is_numeric($narrator->narration_count ?? null) ? (int)$narrator->narration_count : 0;
-$hasNarrationCount = $narrationCount > 0;
-$narrationCountEn = number_format($narrationCount) . ' hadith';
-$narrationCountAr = $toArNums(str_replace(',', '٬', number_format($narrationCount))) . ' حديثًا';
 
 // Teachers / students: first 5 visible, remainder hidden
 $PREVIEW = 5;
@@ -147,113 +68,7 @@ $studentTotal   = count($studentRows);
 <div class="narrator-page">
 <div class="container">
 
-<!-- ═══════════════════════════════════════════════════════ HERO -->
-<section class="hero">
-
-  <!-- Title row -->
-  <div class="hero-row">
-    <div>
-      <h1 class="hero-title"><?= htmlspecialchars($enTitle) ?></h1>
-      <?php if ($hasAltName): ?>
-      <p class="hero-alt-name">(<?= htmlspecialchars($enAltName) ?>)</p>
-      <?php endif; ?>
-    </div>
-    <div dir="rtl">
-      <h1 class="hero-title arabic"><?= htmlspecialchars($narrator->name ?: $narrator->lineage) ?></h1>
-      <?php if ($hasAltName): ?>
-      <p class="hero-alt-name arabic">(<?= htmlspecialchars($narrator->alt_name) ?>)</p>
-      <?php endif; ?>
-    </div>
-  </div>
-
-  <!-- Badges row -->
-  <div class="hero-row">
-    <div class="badges">
-      <?php if (!empty($narrator->reliability_label)): ?>
-      <div class="pill-grade pill-grade--<?= $gradeTier ?>">
-        <?php if ($gradeTier === 'grade-1' || $gradeTier === 'grade-2'): ?><span class="mso mso-sm mso-filled">verified</span><?php endif; ?>
-        <span class="pill-text"><?= htmlspecialchars($enGrade) ?></span>
-      </div>
-      <?php endif; ?>
-      <?php if ($hasIkhtilat): ?>
-      <span class="pill-flag pill-flag--warning">Ikhtilat</span>
-      <?php endif; ?>
-      <?php if ($hasTadlis): ?>
-      <span class="pill-flag pill-flag--warning">Tadlis</span>
-      <?php endif; ?>
-    </div>
-    <div class="badges" dir="rtl">
-      <?php if (!empty($narrator->reliability_label)): ?>
-      <div class="pill-grade pill-grade--<?= $gradeTier ?>">
-        <?php if ($gradeTier === 'grade-1' || $gradeTier === 'grade-2'): ?><span class="mso mso-sm mso-filled">verified</span>&nbsp;&nbsp;<?php endif; ?>
-        <span class="arabic"><?= htmlspecialchars($narrator->reliability_label) ?></span>
-      </div>
-      <?php endif; ?>
-      <?php if ($hasIkhtilat): ?>
-      <span class="pill-flag pill-flag--warning arabic">مختلط</span>
-      <?php endif; ?>
-      <?php if ($hasTadlis): ?>
-      <span class="pill-flag pill-flag--warning arabic">مدلّس</span>
-      <?php endif; ?>
-    </div>
-  </div>
-
-  <!-- Fields row -->
-  <div class="hero-row">
-    <div class="fields">
-      <?php if (!empty($narrator->kunya)): ?>
-      <div>
-        <span class="label">Kunya</span>
-        <span class="field"><?= htmlspecialchars($enKunya) ?></span>
-      </div>
-      <?php endif; ?>
-      <?php if ($hasTabaka || ($hasBirth || $hasDeath) || !empty($narrator->gender)): ?>
-      <div>
-        <?php if ($hasTabaka): ?><span class="label">Generation</span><?php endif; ?>
-        <div class="field-line">
-          <?php if ($hasTabaka): ?><span class="field"><?= htmlspecialchars($tabEn) ?></span><?php endif; ?>
-          <?php if ($hasBirth || $hasDeath): ?><span class="pill-secondary"><?= htmlspecialchars($dateEnStr) ?></span><?php endif; ?>
-          <?php if (!empty($narrator->gender)): ?><span class="mso mso-md"><?= $narrator->gender === 'M' ? 'male' : 'female' ?></span><?php endif; ?>
-        </div>
-      </div>
-      <?php endif; ?>
-      <?php if ($hasEpithet): ?>
-      <div>
-        <span class="label">Title / Byname</span>
-        <span class="field"><?= htmlspecialchars($enEpithet) ?></span>
-      </div>
-      <?php endif; ?>
-    </div>
-    <div dir="rtl">
-      <div class="fields">
-        <?php if (!empty($narrator->kunya)): ?>
-        <div>
-          <span class="label arabic-label">الكنية</span>
-          <span class="field arabic"><?= htmlspecialchars($narrator->kunya) ?></span>
-        </div>
-        <?php endif; ?>
-        <?php if ($hasTabaka || ($hasBirth || $hasDeath) || !empty($narrator->gender)): ?>
-        <div>
-          <?php if ($hasTabaka): ?><span class="label arabic-label">الطبقة</span><?php endif; ?>
-          <div class="field-line">
-            <?php if ($hasTabaka): ?><span class="field arabic"><?= htmlspecialchars($tabAr) ?></span><?php endif; ?>
-            <?php if ($hasBirth || $hasDeath): ?><span class="pill-secondary arabic"><?= htmlspecialchars($arDateStr) ?></span><?php endif; ?>
-            <?php if (!empty($narrator->gender)): ?><span class="mso mso-md"><?= $narrator->gender === 'M' ? 'male' : 'female' ?></span><?php endif; ?>
-          </div>
-        </div>
-        <?php endif; ?>
-        <?php if ($hasEpithet): ?>
-        <div>
-          <span class="label arabic-label">اللقب</span>
-          <span class="field arabic"><?= htmlspecialchars($narrator->epithet) ?></span>
-        </div>
-        <?php endif; ?>
-      </div>
-    </div>
-  </div>
-
-</section>
-<!-- ════════════════════════════════════════════════════════════ -->
+<?= $this->render('_hero', ['narrator' => $narrator]) ?>
 
 <?php
 $hasLineage   = !empty($narrator->lineage);
@@ -513,31 +328,10 @@ $opinionTotal    = count($criticOpinions);
 <!-- ════════════════════════════════════════════════════════════ -->
 <?php endif; ?>
 
-<?php if (!empty($narratedHadith['rows'])): ?>
-<!-- ══════════════════════════════════════ HADITH NARRATED -->
-<section class="mb-section">
-  <div class="section-head">
-    <h3 class="section-title"><?= $hasNarrationCount ? htmlspecialchars(number_format($narrationCount) . ' Hadith Narrated') : 'Hadith Narrated' ?></h3>
-    <h3 class="section-title section-title--ar arabic" dir="rtl"><?= $hasNarrationCount ? htmlspecialchars($narrationCountAr . ' مرويًا') : 'الأحاديث المروية' ?></h3>
-  </div>
-
-  <ul class="narrated-hadith-list">
-    <?php foreach ($narratedHadith['rows'] as $row): ?>
-    <li class="narrated-hadith-row">
-      <a class="narrated-hadith-link" href="<?= htmlspecialchars($row['permalink']) ?>">
-        <span class="narrated-hadith-ref"><?= htmlspecialchars($row['reference']) ?></span>
-        <span class="narrated-hadith-snippet arabic" dir="rtl"><?= htmlspecialchars($row['tarafSnippet'] ?? '') ?></span>
-      </a>
-    </li>
-    <?php endforeach; ?>
-  </ul>
-  <div class="narrated-hadith-more">
-    <span class="narrated-hadith-more-link">View all narrations</span>
-    <span class="narrated-hadith-more-link arabic" dir="rtl">عرض جميع الأحاديث المروية</span>
-  </div>
-</section>
-<!-- ════════════════════════════════════════════════════════════ -->
-<?php endif; ?>
+<?= $this->render('_hadith_preview', [
+    'narrator'       => $narrator,
+    'narratedHadith' => $narratedHadith,
+]) ?>
 
 <?php if (!empty($tarjamaBlocks)): ?>
 <!-- ══════════════════════════════════════ TARJAMA ACCORDIONS -->

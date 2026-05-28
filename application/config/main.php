@@ -145,6 +145,10 @@ $config = [
                 'socialmedia' => 'front/collection/socialmedia',
                 'captcha' => 'front/index/captcha',
                 'urn/<urn:\d+>' => 'front/collection/urn',
+                'narrator/<nid:\d+>/hadith/cluster/<clusterId:\d+>' => 'front/narrator/hadith-cluster',
+                'narrators' => 'front/narrator/list',
+                'narrator/<nid:\d+>/hadith/list' => 'front/narrator/hadith-list',
+                'narrator/<nid:\d+>/hadith' => 'front/narrator/hadith',
                 'narrator/<nid:\d+>' => 'front/narrator/index',
 
                 [ 'pattern' => 'nawawi40:<hadithNumbers:\d+>',
