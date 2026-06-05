@@ -34,6 +34,8 @@ All user-facing text — pages, error messages, view templates, new collections,
 - `Hadith extends ActiveRecord` is the base; per-language subclasses each override `tableName()` (e.g. `{{EnglishHadithTable}}`, `{{ArabicHadithTable}}`) and implement `process_text()` for language-specific text munging (PBUH → ﷺ image/glyph, sanad markup, paragraph breaks).
 - `EnglishHadith` and `ArabicHadith` additionally override `populateReferences()` and `populatePermalink()` — these produce `canonicalReference`, `inbookReference`, `translationReference`, `sunnahReference`, `arabicReference`, and `permalink`. View templates read those properties directly.
 - `ArabicHadith` parses shortcodes via `Thunder\Shortcode` (`[matn]`, `[prematn]`, `[postmatn]`, `[commentary]`, `[narrator id=…]`, `[quran sura=…]`) — sets `shortcode_parsed = true` when applied.
+- `Book::fetchHadith()` returns `[englishEntries, arabicEntries, pairs, lastUpdated]`; collection views depend on this exact shape.
+- Hadith display code expects processed model instances. If manually hydrating hadith rows outside the usual `Util` / `Book` helpers, call `process_text()` and `populate($util, $collection, $book)` before rendering.
 - Adding a new language = new `XYZHadith extends Hadith`, new DB table, new entry in `Book::fetchLangHadith()`'s switch, new column in `BookData` (`xyzBookID`, `xyzBookNum`, `xyzBookName`), new option in `views/layouts/side_panel.php`, and a `langLoaded[xyz]` entry in `public/js/sunnah.js`.
 
 ### URNs are the universal hadith ID
@@ -71,6 +73,8 @@ Three layers, picked per route:
 - **`CdnOriginAndEdgeCache extends yii\filters\PageCache`** — Yii origin page cache **plus** Cloudflare headers. Used by `IndexController`, `CollectionController`, `NarratorController`.
 
 All cacheable routes share the tag `sunnah`, so one Cloudflare **Purge by Tag** (or `purge_everything` on non-Enterprise plans) invalidates the whole site.
+
+When adding request-dependent behavior to origin-cached routes, account for Yii `PageCache` `variations` so cached output cannot bleed across request states.
 
 POST endpoints (`contact`, `ajaxhadithcount`, `flush-cache`, `selection-data`, narrator AJAX list/cluster routes) must be listed in each controller's `behaviors()['except']` array — otherwise the cache header logic will strip their CSRF cookie and break form submission.
 
@@ -145,9 +149,10 @@ There is **no working test runner in this repo**:
 
 The global "every code change must have a unit test" rule (in dev-repo `AGENTS.global.md`) **cannot be honored** here until Codeception is scaffolded. When making a change:
 
-1. Test manually in the Docker container (`docker-compose up --build`) and exercise the affected routes.
-2. Note the gap in the PR description.
-3. If introducing significant new logic (e.g. another `Util` helper, a new search engine, more narrator translation), strongly consider adding a Codeception unit suite at the same time.
+1. At minimum run `php -l` on changed PHP files when possible.
+2. Test manually in the Docker container (`docker-compose up --build`) and exercise the affected routes.
+3. Note the gap in the PR description.
+4. If introducing significant new logic (e.g. another `Util` helper, a new search engine, more narrator translation), strongly consider adding a Codeception unit suite at the same time.
 
 ## Conventions
 
@@ -155,7 +160,10 @@ The global "every code change must have a unit test" rule (in dev-repo `AGENTS.g
 - Hadith permalinks use the colon URL pattern `<collectionName>:<hadithNumber>` (e.g. `/bukhari:1`) for verified books; `/urn/<n>` is the URN-based fallback.
 - Per-language hadith models follow the `XYZHadith extends Hadith` pattern with `tableName() === '{{XYZHadithTable}}'`.
 - Cache keys follow `<scope>:<identifier>` (e.g. `collection:bukhari`, `arabicurn:104350`, `narrator:hadith_clusters:v2:narrator:7:collections:1-2:links:7:clusters:30:offset:0`). Bump the `v<n>` suffix when the cached value shape changes.
+- Controllers commonly set `$this->view->params['_pageType']`, breadcrumbs via `$this->pathCrumbs(...)`, and optional metadata such as `_ogDesc`, `book`, `collection`, and `lastUpdated`; keep these values current when adding pages or display modes.
 - View partials live next to their parent view and are prefixed with `_` (e.g. `_hero.php`, `_hadith_results.php`, `_hadith_cluster_links.php`). Use `$this->renderPartial(...)` for AJAX endpoints.
+- Views output a mix of trusted stored HTML and escaped user-facing values. Escape new dynamic values with `htmlspecialchars()` or Yii helpers unless the value is intentionally pre-rendered HTML.
+- Prefer parameter binding, Yii query builders, or ActiveRecord conditions for new database access. Existing raw SQL exists mostly in utility/cache paths; do not expand it casually.
 - CSS asset cache-busting: wrap CSS/JS paths in `$this->context->auto_version(...)` — appends `?ver=<mtime>` for files under `DOCUMENT_ROOT` (no-op in `YII_DEBUG` mode or for non-rooted paths).
 
 ## Third-Party Integrations (in `views/layouts/`)
