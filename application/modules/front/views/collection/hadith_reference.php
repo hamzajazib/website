@@ -1,18 +1,23 @@
 <?php
             if (!function_exists('renderGradeDetail')) {
-                function renderGradeDetail($grade_detail) {
+                function renderGradeDetail($grade_detail, &$grade_detail_panels, $panel_class = '') {
                     $grade_detail = trim((string)$grade_detail);
                     if (strlen($grade_detail) === 0) return;
 
-                    echo " <details class=\"grade_detail_toggle\">";
-                    echo "<summary title=\"Show grade details\" aria-label=\"Show grade details\">";
+                    static $grade_detail_counter = 0;
+                    $grade_detail_counter++;
+                    $panel_id = "grade_detail_" . $grade_detail_counter;
+                    $grade_detail_panels[] = array(
+                        'id' => $panel_id,
+                        'class' => $panel_class,
+                        'detail' => $grade_detail,
+                    );
+                    $onclick = "var p=document.getElementById('".$panel_id."');if(p){var open=p.hasAttribute('hidden');if(open){p.removeAttribute('hidden');}else{p.setAttribute('hidden','hidden');}this.classList.toggle('is_open',open);this.setAttribute('aria-expanded',open?'true':'false');}";
+
+                    echo " <button type=\"button\" class=\"grade_detail_toggle\" title=\"Show grade details\" aria-label=\"Show grade details\" aria-expanded=\"false\" aria-controls=\"".$panel_id."\" onclick=\"".htmlspecialchars($onclick, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')."\">";
                     echo "<span class=\"grade_detail_marker\" aria-hidden=\"true\"></span>";
                     echo "<span class=\"grade_detail_label\">Grade details</span>";
-                    echo "</summary>";
-                    echo "<div class=\"grade_detail_text\">";
-                    echo nl2br(htmlspecialchars($grade_detail, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
-                    echo "</div>";
-                    echo "</details>";
+                    echo "</button>";
                 }
             }
 
@@ -33,6 +38,7 @@
 			   (strcmp($collection->name, "adab") != 0)) {
     	    echo "<div class=hadith_annotation>";
             echo "<table class=gradetable cellspacing=0 cellpadding=0 border=0>";
+            $grade_detail_panels = array();
 
             // This should really happen in the controllers/models
             // Figure out how many grades there are and populate a structure
@@ -68,7 +74,7 @@
 					echo "</td>";
                     echo "<td class=english_grade width=\"36%\">&nbsp;<b>".$grade."</b>";
                     if (strlen(trim($graded_by)) > 0) echo " (".$graded_by.")";
-                    renderGradeDetail($grade_detail);
+                    renderGradeDetail($grade_detail, $grade_detail_panels);
                     echo "</td>";
                 } else {
                     echo "<td height=100% class=english_grade></td>";
@@ -81,7 +87,7 @@
                     $grade_detail = $arabic_grades[$i]['grade_detail'] ?? '';
     				echo "<td class=\"arabic_grade arabic\">&nbsp;<b> ".$grade."</b>";
 	    			if (strlen(trim($graded_by)) > 0) echo "&nbsp;&nbsp; (".$graded_by.") ";
-                    renderGradeDetail($grade_detail);
+                    renderGradeDetail($grade_detail, $grade_detail_panels, 'arabic');
                     echo "</td>";
 		    		echo "<td class=\"arabic_grade arabic\" width=\"50px\">";
 					if (!$firstGradePrinted) echo "<b>حكم</b>&nbsp;&nbsp;&nbsp;:";
@@ -95,6 +101,16 @@
 				$firstGradePrinted = true;
             }
             echo "</table>";
+            if (count($grade_detail_panels) > 0) {
+                echo "<div class=\"grade_detail_panels\">";
+                foreach ($grade_detail_panels as $grade_detail_panel) {
+                    $panel_class = trim("grade_detail_text grade_detail_panel " . $grade_detail_panel['class']);
+                    echo "<div id=\"".$grade_detail_panel['id']."\" class=\"".$panel_class."\" hidden>";
+                    echo nl2br(htmlspecialchars($grade_detail_panel['detail'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
+                    echo "</div>";
+                }
+                echo "</div>";
+            }
 	        echo "</div>";
     	}
 

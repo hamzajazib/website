@@ -185,6 +185,12 @@
 	overflow: auto;
 }
 
+.gradetable {
+	width: 100%;
+	table-layout: fixed;
+	box-sizing: border-box;
+}
+
 .top_link a span {
     float: left;
     width: 11px;
@@ -202,22 +208,33 @@ a.action_toTop:hover span   { background-position: -11px 0; }
 	font-family: Verdana; 
 	padding-top: 10px;
 	text-align: left;
+	overflow-wrap: anywhere;
 }
 
 .arabic_grade {
 	vertical-align: top; 
 	direction: rtl; 
 	text-align: right;
+	overflow-wrap: anywhere;
 }
 
 .grade_detail_toggle {
-	display: inline-block;
+	display: inline-flex;
+	align-items: baseline;
 	margin-left: 6px;
 	vertical-align: baseline;
 	font-family: inherit;
 	font-size: inherit;
+	line-height: inherit;
 	direction: ltr;
 	text-align: left;
+	max-width: 100%;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--link-color, rgb(93, 128, 128));
+	font-weight: bold;
+	cursor: pointer;
 }
 
 .arabic_grade .grade_detail_toggle {
@@ -225,19 +242,7 @@ a.action_toTop:hover span   { background-position: -11px 0; }
 	margin-right: 6px;
 }
 
-.grade_detail_toggle summary {
-	display: inline-block;
-	cursor: pointer;
-	color: var(--link-color, rgb(93, 128, 128));
-	font-weight: bold;
-	list-style: none;
-}
-
-.grade_detail_toggle summary::-webkit-details-marker {
-	display: none;
-}
-
-.grade_detail_toggle summary:focus {
+.grade_detail_toggle:focus {
 	outline: 1px dotted var(--link-color, rgb(93, 128, 128));
 	outline-offset: 2px;
 }
@@ -251,7 +256,7 @@ a.action_toTop:hover span   { background-position: -11px 0; }
 	content: "[+]";
 }
 
-.grade_detail_toggle[open] .grade_detail_marker::before {
+.grade_detail_toggle.is_open .grade_detail_marker::before {
 	content: "[-]";
 }
 
@@ -267,6 +272,11 @@ a.action_toTop:hover span   { background-position: -11px 0; }
 	width: 1px;
 }
 
+.grade_detail_panels {
+	box-sizing: border-box;
+	width: 100%;
+}
+
 .grade_detail_text {
 	margin-top: 6px;
 	padding: 8px 10px;
@@ -276,11 +286,14 @@ a.action_toTop:hover span   { background-position: -11px 0; }
 	font-family: inherit;
 	font-size: inherit;
 	line-height: inherit;
-	max-width: 760px;
+	width: 100%;
+	max-width: 100%;
+	box-sizing: border-box;
+	overflow-wrap: anywhere;
 	white-space: normal;
 }
 
-.arabic_grade .grade_detail_text {
+.grade_detail_panel.arabic {
 	border-left: 0;
 	border-right: 3px solid var(--sticky-color, #90b8b9);
 	direction: rtl;

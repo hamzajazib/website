@@ -1462,6 +1462,8 @@ input.searchquery{
 .gradetable {
 	width: 100%;
 	padding: 0 25px 0 15px;
+	table-layout: fixed;
+	box-sizing: border-box;
 }
 
 .english_grade {
@@ -1471,22 +1473,33 @@ input.searchquery{
     padding-top: 10px;
     text-align: left;
 	height: 100%;
+    overflow-wrap: anywhere;
 }
 
 .arabic_grade {
     vertical-align: top;
     direction: rtl;
     text-align: right;
+    overflow-wrap: anywhere;
 }
 
 .grade_detail_toggle {
-    display: inline-block;
+    display: inline-flex;
+    align-items: baseline;
     margin-left: 6px;
     vertical-align: baseline;
     font-family: inherit;
     font-size: inherit;
+    line-height: inherit;
     direction: ltr;
     text-align: left;
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--link-color, rgb(93, 128, 128));
+    font-weight: bold;
+    cursor: pointer;
 }
 
 .arabic_grade .grade_detail_toggle {
@@ -1494,19 +1507,7 @@ input.searchquery{
     margin-right: 6px;
 }
 
-.grade_detail_toggle summary {
-    display: inline-block;
-    cursor: pointer;
-    color: var(--link-color, rgb(93, 128, 128));
-    font-weight: bold;
-    list-style: none;
-}
-
-.grade_detail_toggle summary::-webkit-details-marker {
-    display: none;
-}
-
-.grade_detail_toggle summary:focus {
+.grade_detail_toggle:focus {
     outline: 1px dotted var(--link-color, rgb(93, 128, 128));
     outline-offset: 2px;
 }
@@ -1520,7 +1521,7 @@ input.searchquery{
     content: "[+]";
 }
 
-.grade_detail_toggle[open] .grade_detail_marker::before {
+.grade_detail_toggle.is_open .grade_detail_marker::before {
     content: "[-]";
 }
 
@@ -1536,6 +1537,12 @@ input.searchquery{
     width: 1px;
 }
 
+.grade_detail_panels {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 0 25px 0 15px;
+}
+
 .grade_detail_text {
     margin-top: 6px;
     padding: 8px 10px;
@@ -1545,11 +1552,14 @@ input.searchquery{
     font-family: inherit;
     font-size: inherit;
     line-height: inherit;
-    max-width: 760px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: anywhere;
     white-space: normal;
 }
 
-.arabic_grade .grade_detail_text {
+.grade_detail_panel.arabic {
     border-left: 0;
     border-right: 3px solid var(--sticky-color, #90b8b9);
     direction: rtl;

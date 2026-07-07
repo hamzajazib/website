@@ -1,3 +1,4 @@
+<?php $thulathiyyatIntroCollapsible = !empty($thulathiyyatIntroCollapsible); ?>
 <style>
 .thulathiyyatintro {
     width: 72%;
@@ -16,7 +17,9 @@
 }
 @media (max-width: 767px) {
     .thulathiyyatintro {
-        width: 100%;
+        width: auto;
+        margin: 15px 1em 2em;
+        box-sizing: border-box;
     }
     .thulathiyyatintro table {
         width: 100%;
@@ -24,7 +27,7 @@
 }
 </style>
 
-<div class="virtuesintro thulathiyyatintro collapsible collapsed">
+<div class="virtuesintro thulathiyyatintro<?php echo $thulathiyyatIntroCollapsible ? ' collapsible collapsed' : ''; ?>">
 <!-- <h3>Introduction</h3> -->
 
 <p class="arabic" dir="rtl" style="text-align: right;">
@@ -93,5 +96,7 @@
 
 <p>Suleiman Hani</p>
 
+<?php if ($thulathiyyatIntroCollapsible) { ?>
 <a class="button_expand" onclick="jQuery(this).closest('.collapsible').toggleClass('collapsed')"></a>
+<?php } ?>
 </div>

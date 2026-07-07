@@ -41,7 +41,9 @@ else {
 
 	<?php
 		if (strcmp($collectionName, "thulathiyyat") == 0) {
+			$thulathiyyatIntroCollapsible = true;
 			include("thulathiyyatintro.txt");
+			unset($thulathiyyatIntroCollapsible);
 		}
 	?>
 
