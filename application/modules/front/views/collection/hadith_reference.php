@@ -1,4 +1,21 @@
 <?php
+            if (!function_exists('renderGradeDetail')) {
+                function renderGradeDetail($grade_detail) {
+                    $grade_detail = trim((string)$grade_detail);
+                    if (strlen($grade_detail) === 0) return;
+
+                    echo " <details class=\"grade_detail_toggle\">";
+                    echo "<summary title=\"Show grade details\" aria-label=\"Show grade details\">";
+                    echo "<span class=\"grade_detail_marker\" aria-hidden=\"true\"></span>";
+                    echo "<span class=\"grade_detail_label\">Grade details</span>";
+                    echo "</summary>";
+                    echo "<div class=\"grade_detail_text\">";
+                    echo nl2br(htmlspecialchars($grade_detail, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
+                    echo "</div>";
+                    echo "</details>";
+                }
+            }
+
 			if (!isset($showInBookReference)) { $showInBookReference = $collection->showInBookReference; }
 			if (!isset($showEnglishTranslationNumber)) { $showEnglishTranslationNumber = $collection->showEnglishTranslationNumber; }
 
@@ -45,11 +62,14 @@
                 if (array_key_exists($i, $english_grades)) {
                     $grade = $english_grades[$i]['grade'];
                     $graded_by = $english_grades[$i]['graded_by'];
+                    $grade_detail = $english_grades[$i]['grade_detail'] ?? '';
                     echo "<td class=english_grade width=\"50px\">";
 					if (!$firstGradePrinted) echo "<b>Grade</b>:";
 					echo "</td>";
                     echo "<td class=english_grade width=\"36%\">&nbsp;<b>".$grade."</b>";
-                    if (strlen(trim($graded_by)) > 0) echo " (".$graded_by.")</td>";
+                    if (strlen(trim($graded_by)) > 0) echo " (".$graded_by.")";
+                    renderGradeDetail($grade_detail);
+                    echo "</td>";
                 } else {
                     echo "<td height=100% class=english_grade></td>";
                     echo "<td height=100% class=english_grade></td>";
@@ -58,8 +78,11 @@
                 if (array_key_exists($i, $arabic_grades)) {
                     $grade = $arabic_grades[$i]['grade'];
                     $graded_by = $arabic_grades[$i]['graded_by'];
+                    $grade_detail = $arabic_grades[$i]['grade_detail'] ?? '';
     				echo "<td class=\"arabic_grade arabic\">&nbsp;<b> ".$grade."</b>";
-	    			if (strlen(trim($graded_by)) > 0) echo "&nbsp;&nbsp; (".$graded_by.") </td>";
+	    			if (strlen(trim($graded_by)) > 0) echo "&nbsp;&nbsp; (".$graded_by.") ";
+                    renderGradeDetail($grade_detail);
+                    echo "</td>";
 		    		echo "<td class=\"arabic_grade arabic\" width=\"50px\">";
 					if (!$firstGradePrinted) echo "<b>حكم</b>&nbsp;&nbsp;&nbsp;:";
 					echo "</td>";

@@ -39,6 +39,11 @@ else {
 	<div class=clear></div>
 	</div>
 
+	<?php
+		if (strcmp($collectionName, "thulathiyyat") == 0) {
+			include("thulathiyyatintro.txt");
+		}
+	?>
 
 		<div class="book_titles titles">
 				<?php

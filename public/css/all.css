@@ -1,7 +1,6 @@
 @charset "utf-8";
 @import url(./themes/dark.css);
 @import url(./themes/light.css);
-@import url(../font-awesome/css/all.css);
 
 /* CSS Document */
 
@@ -1476,6 +1475,83 @@ input.searchquery{
 
 .arabic_grade {
     vertical-align: top;
+    direction: rtl;
+    text-align: right;
+}
+
+.grade_detail_toggle {
+    display: inline-block;
+    margin-left: 6px;
+    vertical-align: baseline;
+    font-family: inherit;
+    font-size: inherit;
+    direction: ltr;
+    text-align: left;
+}
+
+.arabic_grade .grade_detail_toggle {
+    margin-left: 0;
+    margin-right: 6px;
+}
+
+.grade_detail_toggle summary {
+    display: inline-block;
+    cursor: pointer;
+    color: var(--link-color, rgb(93, 128, 128));
+    font-weight: bold;
+    list-style: none;
+}
+
+.grade_detail_toggle summary::-webkit-details-marker {
+    display: none;
+}
+
+.grade_detail_toggle summary:focus {
+    outline: 1px dotted var(--link-color, rgb(93, 128, 128));
+    outline-offset: 2px;
+}
+
+.grade_detail_marker {
+    display: inline-block;
+    min-width: 25px;
+}
+
+.grade_detail_marker::before {
+    content: "[+]";
+}
+
+.grade_detail_toggle[open] .grade_detail_marker::before {
+    content: "[-]";
+}
+
+.grade_detail_label {
+    border: 0;
+    clip: rect(0, 0, 0, 0);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+}
+
+.grade_detail_text {
+    margin-top: 6px;
+    padding: 8px 10px;
+    border-left: 3px solid var(--sticky-color, #90b8b9);
+    background: var(--secondry_block_bg, rgba(255, 255, 255, 0.5));
+    color: var(--primary-text-color, inherit);
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    max-width: 760px;
+    white-space: normal;
+}
+
+.arabic_grade .grade_detail_text {
+    border-left: 0;
+    border-right: 3px solid var(--sticky-color, #90b8b9);
     direction: rtl;
     text-align: right;
 }

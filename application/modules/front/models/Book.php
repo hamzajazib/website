@@ -96,7 +96,12 @@ class Book extends ActiveRecord
             }
         }
 
-        if (strlen($this->englishBookID) < 1 && strlen($this->arabicBookID) < 1) return array();
+        if (strlen($this->englishBookID) < 1 && strlen($this->arabicBookID) < 1) {
+            if (in_array($this->collection, array("hisn", "thulathiyyat")) && (int)$this->ourBookID === -1 && is_null($hadithRange)) {
+                return array(array(0 => NULL), array(0 => NULL), array(), null);
+            }
+            return array();
+        }
 
         $collection = $this->util->getCollection($this->collection);
 
@@ -158,8 +163,8 @@ class Book extends ActiveRecord
 		$lastup = null;
 		
         if (count($englishSet) == 0 && count($arabicSet) == 0) {
-            // If this happens, we want to return null EXCEPT in case of valid zero-hadith books
-            if (!($this->collection === 'hisn' && $this->ourBookID == -1)) {
+            // Some -1 "Introduction" pseudobooks intentionally have no hadith rows.
+            if (!(in_array($this->collection, array("hisn", "thulathiyyat")) && (int)$this->ourBookID === -1 && is_null($hadithRange))) {
                 return NULL;
             }
         }

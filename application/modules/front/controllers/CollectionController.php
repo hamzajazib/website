@@ -216,8 +216,8 @@ class CollectionController extends SController
 		}
 
         if (!isset($this->_entries) || count($this->_entries) === 0) {
-			// Special case for 0-hadith Hisn al-Muslim introduction book which is valid
-			if (strcmp($collectionName, "hisn") !== 0) {
+			// Special case for valid 0-hadith introduction books.
+			if (!in_array($collectionName, array("hisn", "thulathiyyat"))) {
 			    $errorMsg = "Book $ourBookID is unavailable or does not exist. Click <a href=\"/\">here</a> to go to the home page.";
         	    throw new NotFoundHttpException($errorMsg);
 			}

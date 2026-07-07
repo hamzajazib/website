@@ -101,6 +101,10 @@ else {
 		<!-- <div style="width: 20%; float: left; text-align: center; font-size: 20px; padding-top: 16px;"><b><?php echo $totalCount; ?></b> hadith</div> -->
 
 	<?php
+		if (strcmp($this->params['_pageType'], "book") == 0 and strcmp($collection->name, "thulathiyyat") == 0 and $ourBookID == -1) {
+					include("thulathiyyatintro.txt");
+		}
+
 		if ((!is_null($book->arabicBookIntro) || !is_null($book->englishBookIntro)) and strcmp($this->params['_pageType'], "book") == 0) {
 					if (strcmp($collection->name, "muslim") == 0 and $ourBookID == -1) include("muslimintro.txt");
 					if (strcmp($collection->name, "virtues") == 0 and $ourBookID == 1) include("virtuesintro.txt");
