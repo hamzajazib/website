@@ -15,6 +15,9 @@ $parameters = parse_ini_file(__DIR__ ."/../../.env.local");
 if (array_key_exists("showCarousel", $parameters)) {
     $params['showCarousel'] = $parameters['showCarousel'];
 }
+if (array_key_exists("flushSecret", $parameters)) {
+    $params['flushSecret'] = $parameters['flushSecret'];
+}
 
 function _joinpath($dir1, $dir2) {
     return realpath($dir1 . '/' . $dir2);

@@ -5,6 +5,7 @@ namespace app\modules\front\controllers;
 use app\controllers\SController;
 use app\modules\front\models\ContactForm;
 use Yii;
+use yii\web\ForbiddenHttpException;
 
 class IndexController extends SController
 {
@@ -145,14 +146,15 @@ class IndexController extends SController
         }
     }
 
-	public function actionFlushCache($key = NULL) {
-		if (is_null($key)) $success = Yii::$app->cache->flush();
-		else {
-			$key = rawurldecode($key);
-			$success = Yii::$app->cache->delete($key);
-			//Yii::log("Attempting to delete key $key", 'info', 'system.web.CController');
-			//$success = $key;
+	public function actionFlushCache() {
+		$flushSecret = Yii::$app->params['flushSecret'] ?? '';
+		$requestSecret = Yii::$app->request->headers->get('X-Flush-Secret', '');
+
+		if ($flushSecret === '' || !hash_equals($flushSecret, $requestSecret)) {
+			throw new ForbiddenHttpException('Invalid flush cache secret.');
 		}
+
+		$success = Yii::$app->cache->flush();
 		$this->view->params['success'] = $success;
 		echo $this->renderPartial('flushcache');
 	}
